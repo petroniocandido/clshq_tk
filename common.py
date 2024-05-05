@@ -1,24 +1,41 @@
 
-def checkpoint(modelo, arquivo):
-  torch.save(modelo.state_dict(), DIRETORIO_PADRAO + arquivo)
+import torch
+from torch import nn, optim
+from torch.nn import functional as F
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 
-def checkpoint_all(modelo, otimizador, arquivo):
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from pandas.plotting import parallel_coordinates
+from datetime import date
+import copy
+
+
+
+def checkpoint(model, file):
+  torch.save(model.state_dict(), DEFAULT_PATH + file)
+
+def checkpoint_all(model, optimizer, file):
   torch.save({
-    'optim': otimizador.state_dict(),
-    'model': modelo.state_dict(),
-}, DIRETORIO_PADRAO + arquivo)
+    'optim': optimizer.state_dict(),
+    'model': model.state_dict(),
+}, DEFAULT_PATH + file)
 
-def resume(modelo, arquivo):
-  modelo.load_state_dict(torch.load(DIRETORIO_PADRAO + arquivo, map_location=torch.device(DISPOSITIVO_EXECUCAO)))
+def resume(model, file):
+  model.load_state_dict(torch.load(DEFAULT_PATH + file, map_location=torch.device(DEVICE)))
 
-def resume_all(modelo, otimizador, arquivo):
-  checkpoint = torch.load(DIRETORIO_PADRAO + arquivo, map_location=torch.device(DISPOSITIVO_EXECUCAO))
-  modelo.load_state_dict(checkpoint['model'])
-  if not otimizador is None:
-    otimizador.load_state_dict(checkpoint['optim'])
+def resume_all(model, optimizer, file):
+  checkpoint = torch.load(DEFAULT_PATH + file, map_location=torch.device(DEVICE))
+  model.load_state_dict(checkpoint['model'])
+  if not optimizer is None:
+    optimizer.load_state_dict(checkpoint['optim'])
 
 def classification_metrics(dataloader, model):
-  model.to(DISPOSITIVO_EXECUCAO)
+  model.to(DEVICE)
   model.eval()
   model.double()
 
@@ -27,7 +44,7 @@ def classification_metrics(dataloader, model):
   rec = []
   f1 = []
   for X,y in dataloader:
-    X = X.to(DISPOSITIVO_EXECUCAO)
+    X = X.to(DEVICE)
     prediction = model.predict(X).cpu().numpy()
     classes = np.array(y.cpu().tolist())
 
@@ -57,7 +74,7 @@ def plot_token_space(model, dataset, file):
 
   plt.tight_layout()
 
-  plt.savefig(DIRETORIO_PADRAO + "token-space-"+file+".pdf", dpi=150)
+  plt.savefig(DEFAULT_PATH + "token-space-"+file+".pdf", dpi=150)
 
 
 def plot_token_space_usage(model, dataset, file):
@@ -81,9 +98,7 @@ def plot_token_space_usage(model, dataset, file):
     ax[2].set_xlabel("X")
     ax[2].set_ylabel("Z")
   plt.tight_layout()
-  plt.savefig(DIRETORIO_PADRAO + "3D-tokenspace-"+file+".pdf", dpi=150)
-
-from pandas.plotting import parallel_coordinates
+  plt.savefig(DEFAULT_PATH + "3D-tokenspace-"+file+".pdf", dpi=150)
 
 def plot_token_usage(model, dataset, file):
   model.eval()
@@ -185,4 +200,4 @@ def plot_token_usage(model, dataset, file):
 
   plt.tight_layout()
 
-  plt.savefig(DIRETORIO_PADRAO + "token-usage-"+file+".pdf", dpi=150)
+  plt.savefig(DEFAULT_PATH + "token-usage-"+file+".pdf", dpi=150)

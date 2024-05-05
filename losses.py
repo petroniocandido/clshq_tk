@@ -1,11 +1,9 @@
+import numpy as np
+import pandas as pd
+
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 
 
 def euclidean_distance(a, b):

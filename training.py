@@ -1,10 +1,19 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
 import torch
+from torch import nn, optim
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 
 import clshq_tk
 from clshq_tk.common import checkpoint, resume
 from clshq_tk.data import Dataset, Noise, RandomTranslation
 from clshq_tk.models import TSTokenizer, TSAttentionClassifier
 from clshq_tk.losses import ContrastiveLoss, TripletLoss, NPairLoss, QuantizerLoss
+
+
 
 def encoder_train_step(DEVICE, metric_type, train, test, model, loss, optim):
   model.train()
@@ -165,7 +174,10 @@ def quantizer_train_step(DEVICE, train, test, model, loss, optim, epoch, epochs)
 
 #from IPython import display
 
-def tokenizer_training_loop(DEVICE, dataset, model, **kwargs):
+def tokenizer_training_loop(DEVICE, dataset, model, display = None, **kwargs):
+
+  if display is None:
+    from IPython import display
 
   encoder_loop = kwargs.get('encoder_loop', True)
   quantizer_loop = kwargs.get('quantizer_loop', True)

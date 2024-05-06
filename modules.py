@@ -85,6 +85,38 @@ class TemporalConvolution(nn.Module):
       param.requires_grad = False
 
 
+class TCNEncoder(nn.Module):
+  def __init__(self, num_variables, num_classes, num_samples, out_dim, lags = 21):
+    super().__init__()
+
+    self.tc1 = TemporalConvolution(in_channels = num_variables, out_channels = num_classes * num_variables, kernel_size = lags,  stride = 1, padding = lags,  bias = True)
+    self.tc2 = TemporalConvolution(in_channels = num_classes * num_variables, out_channels = num_classes, kernel_size = lags,  stride = 1, padding = lags,  bias = True)
+
+    self.linear = nn.Linear(num_classes * num_samples, out_dim)
+    self.flat = nn.Flatten(1)
+    self.drop = nn.Dropout1d(.2)
+    self.norm = nn.LayerNorm(num_classes * num_samples)  # For keeping vector approx. unit length
+    #self.norm = nn.BatchNorm1d(num_classes * num_samples)
+
+  def forward(self, x):
+
+    x = self.tc1(x)
+    x = self.tc2(x)
+    x = self.flat(x)
+    x = self.norm(x)
+
+    x = self.linear(self.drop(x))
+
+    return x
+
+  def to(self, *args, **kwargs):
+    self = super().to(*args, **kwargs)
+    self.tc1.to(*args, **kwargs)
+    self.tc2.to(*args, **kwargs)
+    return self
+
+
+
 def gaussian_kernel(x, mean, sd):
   return torch.exp(-(x-mean)**2/(2*sd**2))
 
@@ -101,6 +133,7 @@ def wknn(ix, k, max):
   n = torch.Tensor([gaussian_kernel(k, torch.tensor(0), torch.tensor(1)) for k in d])
   w = n/torch.sum(n)
   return v, w
+
 
 class VectorQuantizer(nn.Module):
   def __init__(self, num_vectors, embed_dim, knn = 20, device = None):

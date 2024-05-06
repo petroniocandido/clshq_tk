@@ -14,7 +14,8 @@ from pandas.plotting import parallel_coordinates
 from datetime import date
 import copy
 
-
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEFAULT_PATH = ''
 
 def checkpoint(model, file):
   torch.save(model.state_dict(), DEFAULT_PATH + file)
@@ -100,17 +101,17 @@ def plot_token_space_usage(model, dataset, file):
   plt.tight_layout()
   plt.savefig(DEFAULT_PATH + "3D-tokenspace-"+file+".pdf", dpi=150)
 
-def plot_token_usage(model, dataset, file):
-  model.eval()
+def plot_token_usage(tok, dataset, file):
+  tok.eval()
   rows = []
 
-  model.quantizer.clear_statistics()
+  tok.quantizer.clear_statistics()
 
   for ix in range(dataset.num_instances):
     data = dataset[ix]
     x = data[0].view(1,6,30)
     y = int(data[1].detach().item())
-    indexes = model(x, return_index=True)
+    indexes = tok(x, return_index=True)
     row = indexes.T.squeeze().detach().numpy().flatten()
     row = np.hstack([row, y])
     rows.append(row)
@@ -136,17 +137,17 @@ def plot_token_usage(model, dataset, file):
 
   fig, ax = plt.subplots(3, 1, figsize=(15, 10))
 
-  if model.quantizer_type == 'quant':
-    stat = [k for k in model.quantizer.statistics.values()]
+  if tok.quantizer_type == 'quant':
+    stat = [k for k in tok.quantizer.statistics.values()]
     norm = np.sum(stat)
-    ax[0].bar([k for k in model.quantizer.statistics.keys()], stat/norm)
+    ax[0].bar([k for k in tok.quantizer.statistics.keys()], stat/norm)
   else:
-    if model.quantizer.dim == 1:
-      ks = sorted([k for k in model.quantizer.statistics.keys()])
-      stat = [model.quantizer.statistics[k] for k in ks]
+    if tok.quantizer.dim == 1:
+      ks = sorted([k for k in tok.quantizer.statistics.keys()])
+      stat = [tok.quantizer.statistics[k] for k in ks]
       norm = np.sum(stat)
       ax[0].bar([k for k in ks], stat/norm)
-    elif model.quantizer.dim == 2:
+    elif tok.quantizer.dim == 2:
       ks = sorted([k for k in tok.quantizer.statistics.keys()])
       stat = [tok.quantizer.statistics[k] for k in ks]
       norm = np.sum(stat)
@@ -177,11 +178,11 @@ def plot_token_usage(model, dataset, file):
   ax[1] = parallel_coordinates(df, 'Class', ax = ax[1], color=colors)
   lgd1 = ax[0].legend(loc='center left', bbox_to_anchor=(1., .5), title="Class")
   ax[1].set_title("Token usage by instance and class")
-  if model.quantizer_type == 'quant':
-    ax[1].set_ylim([0, model.quantizer.num_vectors])
+  if tok.quantizer_type == 'quant':
+    ax[1].set_ylim([0, tok.quantizer.num_vectors])
   else:
-    if model.quantizer.dim == 1:
-      ks = [k for k in model.quantizer.vectors.keys()]
+    if tok.quantizer.dim == 1:
+      ks = [k for k in tok.quantizer.vectors.keys()]
       _min = min(ks)
       _max = max(ks)
       ax[1].set_ylim([_min, _max])
@@ -189,11 +190,11 @@ def plot_token_usage(model, dataset, file):
   ax[2] = parallel_coordinates(df2, 'Class', ax = ax[2], color=colors, linewidth=2.5)
   lgd1 = ax[2].legend(loc='center left', bbox_to_anchor=(1., .5), title="Class")
   ax[2].set_title("Average token usage by class")
-  if model.quantizer_type == 'quant':
-    ax[2].set_ylim([0, model.quantizer.num_vectors])
+  if tok.quantizer_type == 'quant':
+    ax[2].set_ylim([0, tok.quantizer.num_vectors])
   else:
-    if model.quantizer.dim == 1:
-      ks = [k for k in model.quantizer.vectors.keys()]
+    if tok.quantizer.dim == 1:
+      ks = [k for k in tok.quantizer.vectors.keys()]
       _min = min(ks)
       _max = max(ks)
       ax[2].set_ylim([_min, _max])

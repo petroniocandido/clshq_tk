@@ -11,7 +11,7 @@ import clshq_tk
 from clshq_tk.common import checkpoint, resume
 from clshq_tk.data import Dataset, Noise, RandomTranslation
 from clshq_tk.models import TSTokenizer, TSAttentionClassifier
-from clshq_tk.losses import ContrastiveLoss, TripletLoss, NPairLoss, QuantizerLoss
+from clshq_tk.losses import ContrastiveLoss, TripletLoss, NPairLoss, QuantizerLoss, AngularLoss
 
 
 

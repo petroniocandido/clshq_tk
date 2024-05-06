@@ -1,6 +1,3 @@
-import numpy as np
-import pandas as pd
-
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
@@ -38,8 +35,8 @@ class TripletLoss(nn.Module):
     return torch.relu(self.m + distp - distn).mean()
 
 class NPairLoss(nn.Module):
-  def __init__(self):
-    super().__init__( device = None)
+  def __init__(self, device = None):
+    super().__init__()
     self.device = device
 
   def forward(self, xa, xp, xn):
@@ -55,9 +52,10 @@ def tan2(x):
   return -c/c
 
 class AngularLoss(nn.Module):
-  def __init__(self, alpha = 40):
+  def __init__(self, alpha = 40, device = None):
     super().__init__()
-    self.alpha = torch.tensor(alpha)
+    self.device = device
+    self.alpha = torch.tensor(alpha).to(self.device)
     self.atan = tan2(self.alpha)
 
   def forward(self, xa, xp, xn):

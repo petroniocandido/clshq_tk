@@ -7,12 +7,13 @@ from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
-import clshq_tk
-from clshq_tk.common import checkpoint, resume
-from clshq_tk.data import Dataset, Noise, RandomTranslation
-from clshq_tk.models import TSTokenizer, TSAttentionClassifier
-from clshq_tk.losses import ContrastiveLoss, TripletLoss, NPairLoss, QuantizerLoss, AngularLoss
+from sklearn.metrics import accuracy_score
 
+from clshq_tk.common import checkpoint, resume, DEVICE, DEFAULT_PATH
+from clshq_tk.data import Dataset, Noise, RandomTranslation
+from clshq_tk.models.tcn_tokenizer import Tokenizer
+from clshq_tk.models.classifier import TSAttentionClassifier
+from clshq_tk.losses import ContrastiveLoss, TripletLoss, NPairLoss, QuantizerLoss, AngularLoss
 
 
 def encoder_train_step(DEVICE, metric_type, train, test, model, loss, optim):
@@ -172,8 +173,6 @@ def quantizer_train_step(DEVICE, train, test, model, loss, optim, epoch, epochs)
   return errors, errors_val
 
 
-#from IPython import display
-
 def tokenizer_training_loop(DEVICE, dataset, model, display = None, **kwargs):
 
   if display is None:
@@ -287,14 +286,16 @@ def tokenizer_training_loop(DEVICE, dataset, model, display = None, **kwargs):
 
     dataset.contrastive_type = metric_type
 
-  plt.savefig(DIRETORIO_PADRAO + "training-"+file+".pdf", dpi=150)
+  plt.savefig(DEFAULT_PATH + "training-"+checkpoint_file+".pdf", dpi=150)
   checkpoint(model, checkpoint_file)
 
   #return curva_treino, curva_teste
 
-from sklearn.metrics import accuracy_score
 
-def classifier_training_loop(DEVICE, dataset, model, **kwargs):
+def classifier_training_loop(DEVICE, dataset, model, display = None, **kwargs):
+
+  if display is None:
+    from IPython import display
 
   batch_size = kwargs.get('batch', 10)
 
@@ -390,5 +391,5 @@ def classifier_training_loop(DEVICE, dataset, model, **kwargs):
     plt.tight_layout()
     display.display(plt.gcf())
 
-  plt.savefig(DIRETORIO_PADRAO + "training-"+checkpoint_file+".pdf", dpi=150)
+  plt.savefig(DEFAULT_PATH + "training-"+checkpoint_file+".pdf", dpi=150)
   checkpoint(model, checkpoint_file)

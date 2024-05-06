@@ -1,11 +1,9 @@
 from aeon.datasets import load_classification
 
 import numpy as np
-import pandas as pd
 
 import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
+from torch.utils.data import Dataset
 
 import copy
 
@@ -155,7 +153,7 @@ class ClassificationTS(Dataset):
           self.transform(self.X[negative]).double(), self.y[negative].double()
 
     else:
-      raise Error("Unknown contrastive type")
+      raise Exception("Unknown contrastive type")
 
   def __len__(self):
     return self.num_instances

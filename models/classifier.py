@@ -1,7 +1,6 @@
 
 import torch
-from torch import nn, optim
-from torch.nn import functional as F
+from torch import nn
 
 from clshq_tk.modules.positional import PositionalEncoder
 from clshq_tk.modules.attention import MultiHeadAttention

@@ -9,9 +9,9 @@ class LSH(nn.Module):
     super().__init__()
     self.dim = num_dim
     if self.dim == 1:
-      self.weights = nn.Parameter(torch.rand(embed_dim) * width, requires_grad = False)
+      self.weights = nn.Parameter(torch.rand(embed_dim).double() * width, requires_grad = False)
     else:
-      self.weights = [nn.Parameter(torch.rand(embed_dim) * width, requires_grad = False) for k in range(self.dim)]
+      self.weights = [nn.Parameter(torch.rand(embed_dim).double() * width, requires_grad = False) for k in range(self.dim)]
     self.device = device
     self.vectors = {}
     self.statistics = {}
@@ -23,12 +23,12 @@ class LSH(nn.Module):
     if self.dim == 1:
       v = torch.trunc(self.weights @ x.T).int()
     else:
-      v = torch.zeros(batch, self.dim, device=self.device)
+      v = torch.zeros(batch, self.dim, device=self.device).int()
       for nd in range(self.dim):
         v[:,nd] = torch.trunc(self.weights[nd] @ x.T).int()
 
     if not return_index:
-      ret = torch.zeros(x.size(), device=self.device)
+      ret = torch.zeros(x.size(), device=self.device).int()
     if self.training:
       for ct, i in enumerate(v.detach().cpu().numpy()):
         ii = int(i) if self.dim == 1 else tuple(i.tolist())

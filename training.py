@@ -173,6 +173,41 @@ def quantizer_train_step(DEVICE, train, test, model, loss, optim, epoch, epochs)
   return errors, errors_val
 
 
+def lsh_quantizer_train_step(DEVICE, train, test, model, loss, optim, epoch, epochs):
+  
+  model.train()
+
+  errors = []
+  for X,_ in train:
+    model.quantizer.clear_statistics()
+    X = X.to(DEVICE)
+    embeds = model.encode(X)
+    _ = model.quantize(embeds)
+  
+    stat = [model.quantizer.statistics[k] for k in model.quantizer.statistics.keys()]
+    errors.append(np.mean(stat))
+
+
+  ##################
+  # VALIDATION
+  ##################
+
+  model.eval()
+
+  errors_val = []
+  with torch.no_grad():
+    for X,_ in test:
+      model.quantizer.clear_statistics()
+      X = X.to(DEVICE)
+      embeds = model.encode(X)
+      _ = model.quantize(embeds)
+    
+      stat = [model.quantizer.statistics[k] for k in model.quantizer.statistics.keys()]
+      errors_val.append(np.mean(stat))
+
+  return errors, errors_val
+
+
 def tokenizer_training_loop(DEVICE, dataset, model, display = None, **kwargs):
 
   if display is None:
@@ -241,9 +276,11 @@ def tokenizer_training_loop(DEVICE, dataset, model, display = None, **kwargs):
 
     epochs = kwargs.get('quantizer_epochs', 10)
 
-    quantizer_lr = kwargs.get('quantizer_lr', 0.01)
-    quantizer_optimizer = kwargs.get('opt2', optim.Adam(model.quantizer.parameters(), lr=quantizer_lr, weight_decay=0.0005))
-    quantizer_loss = QuantizerLoss()
+    if model.quantizer_type == 'quant':
+
+      quantizer_lr = kwargs.get('quantizer_lr', 0.01)
+      quantizer_optimizer = kwargs.get('opt2', optim.Adam(model.quantizer.parameters(), lr=quantizer_lr, weight_decay=0.0005))
+      quantizer_loss = QuantizerLoss()
 
     dataset.contrastive_type = None
 
@@ -258,8 +295,12 @@ def tokenizer_training_loop(DEVICE, dataset, model, display = None, **kwargs):
       if epoch % 5 == 0:
         checkpoint(model, checkpoint_file)
 
-      errors, errors_val = quantizer_train_step(DEVICE, quantizer_train_ldr, quantizer_test_ldr, model, quantizer_loss, quantizer_optimizer,
-                                                epoch, epochs)
+      if model.quantizer_type == 'quant':
+        errors, errors_val = quantizer_train_step(DEVICE, quantizer_train_ldr, quantizer_test_ldr, model, quantizer_loss, quantizer_optimizer,
+                                                  epoch, epochs)
+      elif model.quantizer_type == 'lsh':
+        errors, errors_val = lsh_quantizer_train_step(DEVICE, quantizer_train_ldr, quantizer_test_ldr, model, None, None,
+                                                  epoch, epochs)
 
       quantizer_train.append(np.mean(errors))
       quantizer_val.append(np.mean(errors_val))
@@ -289,7 +330,6 @@ def tokenizer_training_loop(DEVICE, dataset, model, display = None, **kwargs):
   plt.savefig(DEFAULT_PATH + "training-"+checkpoint_file+".pdf", dpi=150)
   checkpoint(model, checkpoint_file)
 
-  #return curva_treino, curva_teste
 
 
 def classifier_training_loop(DEVICE, dataset, model, display = None, **kwargs):

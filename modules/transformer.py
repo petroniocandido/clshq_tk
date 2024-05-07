@@ -18,7 +18,7 @@ class Transformer(nn.Module):
     self.linear2 = nn.Linear(feed_forward, num_tokens * embed_dim)
     self.gelu = nn.GELU()
     self.drop = nn.Dropout(.25)
-    self.unflat = nn.UnFlatten(1, [num_tokens, embed_dim])
+    self.unflat = nn.Unflatten(1, [num_tokens, embed_dim])
 
   def forward(self, x):
     z = self.attention(x)

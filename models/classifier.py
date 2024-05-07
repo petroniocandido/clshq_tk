@@ -6,7 +6,7 @@ from clshq_tk.modules.positional import PositionalEncoder
 from clshq_tk.modules.transformer import Transformer
 
 class TSAttentionClassifier(nn.Module):
-  def __init__(self, tokenizer, num_tokens, num_layers, device = None, **kwargs):
+  def __init__(self, tokenizer, num_tokens, num_layers, num_heads, feed_forward, device = None, **kwargs):
     super().__init__()
 
     self.num_tokens = num_tokens
@@ -15,7 +15,7 @@ class TSAttentionClassifier(nn.Module):
     self.tokenizer.freeze()
     self.device = device
     self.positional = PositionalEncoder(self.num_tokens, self.tokenizer.embed_dim)
-    self.transformers = [Transformer(self.tokenizer.num_classes, self.num_tokens, self.tokenizer.embed_dim, self.num_tokens * self.tokenizer.num_classes) 
+    self.transformers = [Transformer(num_heads, self.num_tokens, self.tokenizer.embed_dim, feed_forward) 
                          for k in range(num_layers)]
     self.flat = nn.Flatten(1)
     self.linear = nn.Linear(self.num_tokens * self.tokenizer.embed_dim, self.tokenizer.num_classes)

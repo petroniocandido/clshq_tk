@@ -5,7 +5,8 @@ from clshq_tk.modules.lsh import LSH
 
 class Tokenizer(nn.Module):
   def __init__(self, num_variables, num_classes, embed_dim, window_size,
-               step_size, sample_width = 1, patch_width = 1, device = None, **kwargs):
+               step_size, sample_width = 1, patch_width = 1, 
+               device = None, dtype = torch.float64, **kwargs):
     super().__init__()
 
     self.window_size = window_size
@@ -13,9 +14,13 @@ class Tokenizer(nn.Module):
     self.embed_dim = embed_dim
     self.num_classes = num_classes
     self.device = device
+    self.dtype = dtype
 
-    self.sample_level = LSH(num_variables, width=sample_width, num_dim = embed_dim)
-    self.patch_level = LSH(window_size * embed_dim, width=patch_width, num_dim = embed_dim)
+    self.sample_level = LSH(num_variables, width=sample_width, num_dim = embed_dim, 
+                            dtype=self.dtype, device=self.device)
+    self.patch_level = LSH(window_size * embed_dim, width=patch_width, num_dim = embed_dim, 
+                            dtype=self.dtype, device=self.device)
+    self.norm = nn.LayerNorm(embed_dim)  # For keeping vector approx. unit length
 
   def total_tokens(self, x):
     samples = x.size(2)
@@ -27,7 +32,7 @@ class Tokenizer(nn.Module):
 
   def encode(self, x):
     batch, v, samples = x.size()
-    new_samples = torch.zeros(batch, self.embed_dim, samples, dtype=torch.float64).to(self.device)
+    new_samples = torch.zeros(batch, self.embed_dim, samples, dtype=self.dtype).to(self.device)
     for ix in range(samples):
       data = x[:,:,ix]
       e = self.sample_level(data, return_index = True)
@@ -37,7 +42,7 @@ class Tokenizer(nn.Module):
   def quantize(self, x, **kwargs):
     num_tokens = self.total_tokens(x)
     batch, sample_embed_dim, samples = x.size()
-    tokens = torch.zeros(batch, num_tokens, self.embed_dim, dtype=torch.float64).to(self.device)
+    tokens = torch.zeros(batch, num_tokens, self.embed_dim, dtype=self.dtype).to(self.device)
     for ix, window in enumerate(self.sliding_window(x)):
       data = x[:,:, window : window + self.window_size].reshape(batch, self.window_size * sample_embed_dim)
       e = self.patch_level(data, return_index = True)
@@ -54,11 +59,16 @@ class Tokenizer(nn.Module):
     new_samples = self.encode(x)
     tokens = self.quantize(new_samples)
 
+    tokens = self.norm(tokens.float())
+
     return tokens
 
   def to(self, *args, **kwargs):
     self = super().to(*args, **kwargs)
-    self.device = args[0]
+    if isinstance(args[0], str):
+      self.device = args[0]
+    else:
+      self.dtype = args[0]
     self.sample_level = self.sample_level.to(*args, **kwargs)
     self.patch_level = self.patch_level.to(*args, **kwargs)
     return self

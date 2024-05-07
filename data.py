@@ -8,8 +8,11 @@ from torch.utils.data import Dataset
 import copy
 
 class ClassificationTS(Dataset):
-  def __init__(self, name, train, contrastive_type = None, **kwargs):
+  def __init__(self, name, train, contrastive_type = None, 
+               dtype = torch.float64, **kwargs):
     super().__init__()
+
+    self.dtype = dtype
 
     X, y = load_classification(name)
 
@@ -37,7 +40,7 @@ class ClassificationTS(Dataset):
     else:
       y = np.array([int(float(k)) for k in y])
 
-    self.X = torch.from_numpy(X)
+    self.X = torch.from_numpy(X).to(self.dtype)
     self.y = torch.from_numpy(y)
     self.y = self.y.type(torch.LongTensor)  # Targets sempre do tipo Long
 
@@ -101,9 +104,9 @@ class ClassificationTS(Dataset):
 
     if self.contrastive_type is None:
       if not self.transform:
-        return self.X[index].double(), self.y[index].double()
+        return self.X[index], self.y[index]
       else:
-        return self.transform(self.X[index]).double(), self.y[index].double()
+        return self.transform(self.X[index]), self.y[index]
 
     elif self.contrastive_type == 'contrastive':
       if isinstance(index, int):
@@ -112,11 +115,11 @@ class ClassificationTS(Dataset):
         sample = [self.any_sample(ix) for ix in index]
 
       if not self.transform:
-        return self.X[index].double(), self.y[index].double(), \
-          self.X[sample].double(), self.y[sample].double()
+        return self.X[index], self.y[index], \
+          self.X[sample], self.y[sample]
       else:
-        return self.transform(self.X[index]).double(), self.y[index].double(), \
-          self.transform(self.X[sample]).double(), self.y[sample].double()
+        return self.transform(self.X[index]), self.y[index], \
+          self.transform(self.X[sample]), self.y[sample]
 
     elif self.contrastive_type in ('triplet','angular'):
       if isinstance(index, int):
@@ -127,13 +130,13 @@ class ClassificationTS(Dataset):
         negative = [self.negative_sample(ix) for ix in index]
 
       if not self.transform:
-        return self.X[index].double(), self.y[index].double(), \
-          self.X[positive].double(), self.y[positive].double(), \
-          self.X[negative].double(), self.y[negative].double(),
+        return self.X[index], self.y[index], \
+          self.X[positive], self.y[positive], \
+          self.X[negative], self.y[negative],
       else:
-        return self.transform(self.X[index]).double(), self.y[index].double(), \
-          self.transform(self.X[positive]).double(), self.y[positive].double(), \
-          self.transform(self.X[negative]).double(), self.y[negative].double()
+        return self.transform(self.X[index]), self.y[index], \
+          self.transform(self.X[positive]), self.y[positive], \
+          self.transform(self.X[negative]), self.y[negative]
 
     elif self.contrastive_type == 'npair':
       if isinstance(index, int):
@@ -144,13 +147,13 @@ class ClassificationTS(Dataset):
         negative = [self.all_negative_samples(ix) for ix in index]
 
       if not self.transform:
-        return self.X[index].double(), self.y[index].double(), \
-          self.X[positive].double(), self.y[positive].double(), \
-          self.X[negative].double(), self.y[negative].double()
+        return self.X[index], self.y[index], \
+          self.X[positive], self.y[positive], \
+          self.X[negative], self.y[negative]
       else:
-        return self.transform(self.X[index]).double(), self.y[index].double(), \
-          self.transform(self.X[positive]).double(), self.y[positive].double(), \
-          self.transform(self.X[negative]).double(), self.y[negative].double()
+        return self.transform(self.X[index]), self.y[index], \
+          self.transform(self.X[positive]), self.y[positive], \
+          self.transform(self.X[negative]), self.y[negative]
 
     else:
       raise Exception("Unknown contrastive type")

@@ -67,7 +67,7 @@ class VectorQuantizer(nn.Module):
   def to(self, *args, **kwargs):
     self = super().to(*args, **kwargs)
     self.embedding.weight.to(*args, **kwargs)
-    self.device = args[0]
+    self.device = args[0] if isinstance(args[0], str) else self.device
     return self
 
   def freeze(self):

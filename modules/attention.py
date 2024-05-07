@@ -6,7 +6,8 @@ from torch import nn
 
 
 class MultiHeadAttention(nn.Module):
-  def __init__(self, num_heads, num_tokens, embed_dim, device = None, **kwargs):
+  def __init__(self, num_heads, num_tokens, embed_dim, 
+               device = None, dtype = torch.float64, **kwargs):
     super().__init__()
 
     self.num_heads = num_heads
@@ -15,14 +16,18 @@ class MultiHeadAttention(nn.Module):
     self.dk = kwargs.get('dk', self.embed_dim)
     self.dv = kwargs.get('dv', self.embed_dim)
     self.device = device
+    self.dtype = dtype
 
     self.sm = nn.Softmax(1)
 
-    self.WQ = [nn.Parameter(torch.randn(self.embed_dim, self.dk)) for i in range(self.num_heads)]
-    self.WK = [nn.Parameter(torch.randn(self.embed_dim, self.dk)) for i in range(self.num_heads)]
-    self.WV = [nn.Parameter(torch.randn(self.embed_dim, self.dv)) for i in range(self.num_heads)]
+    self.WQ = [nn.Parameter(torch.randn(self.embed_dim, self.dk, device = self.device, dtype = self.dtype)) 
+               for i in range(self.num_heads)]
+    self.WK = [nn.Parameter(torch.randn(self.embed_dim, self.dk, device = self.device, dtype = self.dtype)) 
+               for i in range(self.num_heads)]
+    self.WV = [nn.Parameter(torch.randn(self.embed_dim, self.dv, device = self.device, dtype = self.dtype)) 
+               for i in range(self.num_heads)]
 
-    self.WO = nn.Parameter(torch.randn(self.num_heads * self.dv, self.embed_dim))
+    self.WO = nn.Parameter(torch.randn(self.num_heads * self.dv, self.embed_dim, device = self.device, dtype = self.dtype))
 
   def forward(self, x):
     b, t, e = x.size()
@@ -32,13 +37,15 @@ class MultiHeadAttention(nn.Module):
 
     if e != self.embed_dim:
       raise Exception("Token dimension different from embed_dim")
+    
+    x = x.to(self.dtype)
 
-    Z = torch.zeros(b, self.num_heads, self.num_tokens, self.dv, device = self.device)
-    Z2 = torch.zeros(b, self.num_tokens, self.embed_dim, device = self.device)
+    Z = torch.zeros(b, self.num_heads, self.num_tokens, self.dv, device = self.device, dtype = self.dtype)
+    Z2 = torch.zeros(b, self.num_tokens, self.embed_dim, device = self.device, dtype = self.dtype)
     for h in range(self.num_heads):
-      Q = torch.zeros(b, self.num_tokens, self.dk)
-      K = torch.zeros(b, self.num_tokens, self.dk)
-      V = torch.zeros(b, self.num_tokens, self.dv)
+      Q = torch.zeros(b, self.num_tokens, self.dk, device = self.device, dtype = self.dtype)
+      K = torch.zeros(b, self.num_tokens, self.dk, device = self.device, dtype = self.dtype)
+      V = torch.zeros(b, self.num_tokens, self.dv, device = self.device, dtype = self.dtype)
       for i in range(self.num_tokens):
         xtemp = x[:,i,:].view(b,e)
         Q[:,i,:] = xtemp @ self.WQ[h]
@@ -51,7 +58,7 @@ class MultiHeadAttention(nn.Module):
 
       Z[:, h, :, :] = A @ V
 
-    Z2 = torch.zeros(b, self.num_tokens, self.embed_dim, device = self.device)
+    Z2 = torch.zeros(b, self.num_tokens, self.embed_dim, device = self.device, dtype = self.dtype)
     for bb in range(b):
       z = Z[bb,:,:,:].reshape(self.num_tokens, self.num_heads * self.dv)
       Z2[bb, :, :] = z @ self.WO
@@ -60,7 +67,12 @@ class MultiHeadAttention(nn.Module):
 
   def to(self, *args, **kwargs):
     self = super().to(*args, **kwargs)
-    self.device = args[0]
+    
+    if isinstance(args[0], str):
+      self.device = args[0]
+    else:
+      self.dtype = args[0]
+
     for h in range(self.num_heads):
       self.WQ[h].to(*args, **kwargs)
       self.WK[h].to(*args, **kwargs)

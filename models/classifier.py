@@ -6,7 +6,8 @@ from clshq_tk.modules.positional import PositionalEncoder
 from clshq_tk.modules.transformer import Transformer
 
 class TSAttentionClassifier(nn.Module):
-  def __init__(self, tokenizer, num_tokens, num_layers, num_heads, feed_forward, device = None, **kwargs):
+  def __init__(self, tokenizer, num_tokens, num_layers, num_heads, feed_forward, 
+               device = None, dtype = torch.float64, **kwargs):
     super().__init__()
 
     self.num_tokens = num_tokens
@@ -14,11 +15,15 @@ class TSAttentionClassifier(nn.Module):
     self.tokenizer = tokenizer
     self.tokenizer.freeze()
     self.device = device
-    self.positional = PositionalEncoder(self.num_tokens, self.tokenizer.embed_dim)
-    self.transformers = [Transformer(num_heads, self.num_tokens, self.tokenizer.embed_dim, feed_forward) 
+    self.dtype = dtype
+    self.positional = PositionalEncoder(self.num_tokens, self.tokenizer.embed_dim, 
+                            dtype=self.dtype, device=self.device)
+    self.transformers = [Transformer(num_heads, self.num_tokens, self.tokenizer.embed_dim, feed_forward, 
+                         dtype=self.dtype, device=self.device) 
                          for k in range(num_layers)]
     self.flat = nn.Flatten(1)
-    self.linear = nn.Linear(self.num_tokens * self.tokenizer.embed_dim, self.tokenizer.num_classes)
+    self.linear = nn.Linear(self.num_tokens * self.tokenizer.embed_dim, self.tokenizer.num_classes, 
+                            dtype=self.dtype, device=self.device)
     self.relu = nn.ReLU()
     self.drop = nn.Dropout(.25)
     self.sm = nn.LogSoftmax(dim=1)
@@ -39,12 +44,15 @@ class TSAttentionClassifier(nn.Module):
 
   def to(self, *args, **kwargs):
     self = super().to(*args, **kwargs)
-    self.device = args[0]
-    self.tokenizer = self.tokenizer.to(self.device)
-    self.positional = self.positional.to(self.device)
+    if isinstance(args[0], str):
+      self.device = args[0]
+    else:
+      self.dtype = args[0]
+    self.tokenizer = self.tokenizer.to(*args, **kwargs)
+    self.positional = self.positional.to(*args, **kwargs)
     for k in range(self.num_layers):
-      self.transformers[k] = self.transformers[k].to(self.device)
-    self.linear = self.linear.to(self.device)
+      self.transformers[k] = self.transformers[k].to(*args, **kwargs)
+    self.linear = self.linear.to(*args, **kwargs)
     return self
 
   def train(self, *args, **kwargs):

@@ -5,20 +5,26 @@ import torch
 from torch import nn
 
 class LSH(nn.Module):
-  def __init__(self, embed_dim, width = 1000, num_dim = 1, device = None):
+  def __init__(self, embed_dim, width = 1000, num_dim = 1, 
+               device = None, dtype = torch.float64):
     super().__init__()
     self.dim = num_dim
-    if self.dim == 1:
-      self.weights = nn.Parameter(torch.rand(embed_dim).double() * width, requires_grad = False)
-    else:
-      self.weights = [nn.Parameter(torch.rand(embed_dim).double() * width, requires_grad = False) for k in range(self.dim)]
     self.device = device
+    self.dtype = dtype
+
+    if self.dim == 1:
+      self.weights = nn.Parameter(torch.rand(embed_dim, dtype = self.dtype) * width, requires_grad = False)
+    else:
+      self.weights = [nn.Parameter(torch.rand(embed_dim, dtype = self.dtype) * width, requires_grad = False) for k in range(self.dim)]
+
     self.vectors = {}
     self.statistics = {}
 
   def forward(self, x, **kwargs):
     return_index = kwargs.get('return_index', False)
     batch = x.size(0)
+
+    x = x.to(self.dtype)
 
     if self.dim == 1:
       v = torch.trunc(self.weights @ x.T).int()
@@ -70,7 +76,12 @@ class LSH(nn.Module):
 
   def to(self, *args, **kwargs):
     self = super().to(*args, **kwargs)
-    self.device = args[0]
+    
+    if isinstance(args[0], str):
+      self.device = args[0]
+    else:
+      self.dtype = args[0]
+
     if self.dim == 1:
       self.weights = self.weights.to(*args, **kwargs)
     else:

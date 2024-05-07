@@ -5,7 +5,7 @@ from clshq_tk.modules.lsh import LSH
 
 class Tokenizer(nn.Module):
   def __init__(self, num_variables, num_classes, embed_dim, window_size,
-               step_size, width, device = None, **kwargs):
+               step_size, sample_width = 1, patch_width = 1, device = None, **kwargs):
     super().__init__()
 
     self.window_size = window_size
@@ -14,8 +14,8 @@ class Tokenizer(nn.Module):
     self.num_classes = num_classes
     self.device = device
 
-    self.sample_level = LSH(num_variables, width=width, num_dim = embed_dim)
-    self.patch_level = LSH(window_size * embed_dim, width=width, num_dim = embed_dim)
+    self.sample_level = LSH(num_variables, width=sample_width, num_dim = embed_dim)
+    self.patch_level = LSH(window_size * embed_dim, width=patch_width, num_dim = embed_dim)
 
   def total_tokens(self, x):
     samples = x.size(2)

@@ -4,23 +4,25 @@ from torch import nn
 from clshq_tk.modules.lsh import LSH
 
 class Tokenizer(nn.Module):
-  def __init__(self, num_variables, num_classes, embed_dim, window_size,
+  def __init__(self, num_variables, num_classes, sample_dim, patch_dim, window_size,
                step_size, sample_width = 1, patch_width = 1, 
                device = None, dtype = torch.float64, **kwargs):
     super().__init__()
 
     self.window_size = window_size
     self.step_size = step_size
-    self.embed_dim = embed_dim
+    self.sample_dim = sample_dim
+    self.patch_dim = patch_dim
     self.num_classes = num_classes
+    self.embed_dim = self.patch_dim
     self.device = device
     self.dtype = dtype
 
-    self.sample_level = LSH(num_variables, width=sample_width, num_dim = embed_dim, 
+    self.sample_level = LSH(num_variables, width=sample_width, num_dim = sample_dim, 
                             dtype=self.dtype, device=self.device)
-    self.patch_level = LSH(window_size * embed_dim, width=patch_width, num_dim = embed_dim, 
+    self.patch_level = LSH(window_size * sample_dim, width=patch_width, num_dim = patch_dim, 
                             dtype=self.dtype, device=self.device)
-    self.norm = nn.LayerNorm(embed_dim)  # For keeping vector approx. unit length
+    self.norm = nn.LayerNorm(patch_dim)  # For keeping vector approx. unit length
 
   def total_tokens(self, x):
     samples = x.size(2)
@@ -32,7 +34,7 @@ class Tokenizer(nn.Module):
 
   def encode(self, x):
     batch, v, samples = x.size()
-    new_samples = torch.zeros(batch, self.embed_dim, samples, dtype=self.dtype).to(self.device)
+    new_samples = torch.zeros(batch, self.sample_dim, samples, dtype=self.dtype, device = self.device)
     for ix in range(samples):
       data = x[:,:,ix]
       e = self.sample_level(data, return_index = True)
@@ -42,9 +44,9 @@ class Tokenizer(nn.Module):
   def quantize(self, x, **kwargs):
     num_tokens = self.total_tokens(x)
     batch, sample_embed_dim, samples = x.size()
-    tokens = torch.zeros(batch, num_tokens, self.embed_dim, dtype=self.dtype).to(self.device)
+    tokens = torch.zeros(batch, num_tokens, self.patch_dim, dtype=self.dtype, device = self.device)
     for ix, window in enumerate(self.sliding_window(x)):
-      data = x[:,:, window : window + self.window_size].reshape(batch, self.window_size * sample_embed_dim)
+      data = x[:,:, window : window + self.window_size].reshape(batch, self.window_size * self.sample_dim)
       e = self.patch_level(data, return_index = True)
       tokens[:,ix,:] = e
     return tokens

@@ -26,7 +26,8 @@ class Tokenizer(nn.Module):
 
   def total_tokens(self, x):
     samples = x.size(2)
-    return (samples - self.window_size) // self.step_size
+    inc = 0 if (samples - self.window_size) % self.step_size == 0 else 1
+    return ((samples - self.window_size) // self.step_size) + inc
 
   def sliding_window(self, x):
     samples = x.size(2)
@@ -50,16 +51,6 @@ class Tokenizer(nn.Module):
       e = self.patch_level(data, return_index = True)
       tokens[:,ix,:] = e
     return tokens
-  
-  def build(self, dataloader):
-    self.train()
-    for X,_ in dataloader:
-      _ = self.forward(X)
-    
-    self.sample_level.tensorize()
-    self.patch_level.tensorize()
-
-    self.eval()
 
   def forward(self, x, **kwargs):
     _, _, samples = x.size()
@@ -95,3 +86,13 @@ class Tokenizer(nn.Module):
     for param in self.parameters(recurse=True):
       param.requires_grad = False
 
+
+def training_loop(model, dataloader):
+    model.train()
+    for X,_ in dataloader:
+      _ = model.forward(X)
+    
+    model.sample_level.tensorize()
+    model.patch_level.tensorize()
+
+    model.eval()

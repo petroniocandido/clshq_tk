@@ -13,15 +13,23 @@ class LSH(nn.Module):
     self.dtype = dtype
 
     if self.dim == 1:
-      self.weights = nn.Parameter(torch.rand(embed_dim, dtype = self.dtype) * width, requires_grad = False)
+      self.weights = nn.Parameter(torch.rand(embed_dim, dtype = self.dtype, device = self.device) * width, 
+                                  requires_grad = False)
     else:
-      self.weights = [nn.Parameter(torch.rand(embed_dim, dtype = self.dtype) * width, requires_grad = False) for k in range(self.dim)]
+      self.weights = [nn.Parameter(torch.rand(embed_dim, dtype = self.dtype, device = self.device) * width, 
+                                   requires_grad = False) for k in range(self.dim)]
 
     self.vectors = {}
     self.statistics = {}
+    self.tensors = torch.tensor(0)
+
+  def tensorize(self):
+    tmp = np.array(sorted([k for k in self.vectors.keys()]))
+    self.tensors = torch.from_numpy(tmp).int().to(self.device)
 
   def forward(self, x, **kwargs):
     return_index = kwargs.get('return_index', False)
+    nearest_neighbor = kwargs.get('nearest_neighbor', False)
     batch = x.size(0)
 
     x = x.to(self.dtype)
@@ -35,6 +43,7 @@ class LSH(nn.Module):
 
     if not return_index:
       ret = torch.zeros(x.size(), device=self.device).int()
+
     if self.training:
       for ct, i in enumerate(v.detach().cpu().numpy()):
         ii = int(i) if self.dim == 1 else tuple(i.tolist())
@@ -46,7 +55,12 @@ class LSH(nn.Module):
           self.vectors[ii] = x[ct,:]
 
       if return_index:
-        return v
+        if nearest_neighbor:
+          dist = self.tensors @ v.T
+          tmp = self.tensors[torch.argmin(dist.T, dim=1).int()]
+          return tmp
+        else:
+          return v
       else:
         for ct, i in enumerate(v.detach().cpu().numpy()):
           ii = int(i) if self.dim == 1 else tuple(i.tolist())
@@ -55,7 +69,12 @@ class LSH(nn.Module):
 
     else:
       if return_index:
-        return v
+        if nearest_neighbor:
+          dist = self.tensors @ v.T
+          tmp = self.tensors[torch.argmin(dist.T, dim=1).int()]
+          return tmp
+        else:
+          return v
       else:
         for ct, i in enumerate(v.detach().cpu().numpy()):
           ii = int(i) if self.dim == 1 else tuple(i.tolist())
@@ -69,7 +88,6 @@ class LSH(nn.Module):
 
         return ret
 
-    return x
 
   def clear_statistics(self):
     self.statistics = {k:0 for k in self.statistics.keys()}

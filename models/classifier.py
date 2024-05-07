@@ -57,7 +57,6 @@ class TSAttentionClassifier(nn.Module):
 
   def train(self, *args, **kwargs):
     super().train(*args, **kwargs)
-    self.tokenizer = self.tokenizer.train(*args, **kwargs)
     self.positional = self.positional.train(*args, **kwargs)
     for k in range(self.num_layers):
       self.transformers[k] = self.transformers[k].train(*args, **kwargs)

@@ -43,17 +43,27 @@ class Tokenizer(nn.Module):
 
   def quantize(self, x, **kwargs):
     num_tokens = self.total_tokens(x)
-    batch, sample_embed_dim, samples = x.size()
+    batch, _, _ = x.size()
     tokens = torch.zeros(batch, num_tokens, self.patch_dim, dtype=self.dtype, device = self.device)
     for ix, window in enumerate(self.sliding_window(x)):
       data = x[:,:, window : window + self.window_size].reshape(batch, self.window_size * self.sample_dim)
       e = self.patch_level(data, return_index = True)
       tokens[:,ix,:] = e
     return tokens
+  
+  def build(self, dataloader):
+    self.train()
+    for X,_ in dataloader:
+      _ = self.forward(X)
+    
+    self.sample_level.tensorize()
+    self.patch_level.tensorize()
+
+    self.eval()
 
   def forward(self, x, **kwargs):
-    batch, v, samples = x.size()
-    x = x.double()
+    _, _, samples = x.size()
+    x = x.to(self.dtype)
 
     if samples < self.window_size:
       raise Exception("There are less samples than the window_size")

@@ -3,9 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import torch
-from torch import nn, optim
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
+from torch import optim
+from torch.utils.data import DataLoader
+from torch.nn import functional as F
 
 from sklearn.metrics import accuracy_score
 

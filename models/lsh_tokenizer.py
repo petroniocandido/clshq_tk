@@ -88,11 +88,12 @@ class Tokenizer(nn.Module):
 
 
 def training_loop(model, dataloader):
-    model.train()
-    for X,_ in dataloader:
-      _ = model.forward(X)
-    
-    model.sample_level.tensorize()
-    model.patch_level.tensorize()
+  model.train()
+  for X,_ in dataloader:
+    X = X.to(model.device)
+    _ = model.forward(X)
+  
+  model.sample_level.tensorize()
+  model.patch_level.tensorize()
 
-    model.eval()
+  model.eval()

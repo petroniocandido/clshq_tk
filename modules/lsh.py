@@ -4,6 +4,26 @@ import pandas as pd
 import torch
 from torch import nn
 
+def gram_schmidt(A):
+  # From: https://zerobone.net/blog/cs/gram-schmidt-orthogonalization/
+  n, m = A.size()
+  for i in range(m):        
+    q = A[:, i] # i-th column of A
+        
+    for j in range(i):
+      q = q - torch.dot(A[:, j], A[:, i]) * A[:, j]
+        
+    if np.array_equal(q, np.zeros(q.shape)):
+      raise Exception("The column vectors are not linearly independent")
+        
+    # normalize q
+    q = q / torch.sqrt(torch.dot(q, q))
+        
+    # write the vector back in the matrix
+    A[:, i] = q
+  return A
+
+
 class LSH(nn.Module):
   def __init__(self, embed_dim, width = 1000, num_dim = 1, 
                device = None, dtype = torch.float64):
@@ -12,7 +32,7 @@ class LSH(nn.Module):
     self.device = device
     self.dtype = dtype
 
-    self.weights = nn.Parameter(torch.rand(self.dim, embed_dim, dtype = self.dtype, device = self.device) * width, 
+    self.weights = nn.Parameter(gram_schmidt(torch.rand(self.dim, embed_dim, dtype = self.dtype, device = self.device) * width), 
                                   requires_grad = False)
 
     self.vectors = {}
@@ -32,7 +52,11 @@ class LSH(nn.Module):
 
     v = torch.zeros(batch, self.dim, device=self.device).int()
     for nd in range(self.dim):
-      v[:,nd] = torch.trunc(self.weights[nd, :] @ x.T).int()
+      if self.dim == 1:
+        v[nd] = torch.trunc(self.weights[nd, :] @ x.T).int()
+      else:
+        v[:,nd] = torch.trunc(self.weights[nd, :] @ x.T).int()
+
 
     if not return_index:
       ret = torch.zeros(x.size(), device=self.device).int()
@@ -93,10 +117,6 @@ class LSH(nn.Module):
     else:
       self.dtype = args[0]
 
-    if self.dim == 1:
-      self.weights = self.weights.to(*args, **kwargs)
-    else:
-      for i in range(self.dim):
-        self.weights[i] = self.weights[i].to(*args, **kwargs)
-
+    self.weights = self.weights.to(*args, **kwargs)
+    
     return self

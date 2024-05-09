@@ -18,9 +18,9 @@ class Tokenizer(nn.Module):
     self.device = device
     self.dtype = dtype
 
-    self.sample_level = LSH(num_variables, width=sample_width, num_dim = sample_dim, 
+    self.sample_level = LSH(num_variables, width=sample_width, num_dim = self.sample_dim, 
                             dtype=self.dtype, device=self.device)
-    self.patch_level = LSH(window_size * sample_dim, width=patch_width, num_dim = patch_dim, 
+    self.patch_level = LSH(window_size * sample_dim, width=patch_width, num_dim = self.patch_dim, 
                             dtype=self.dtype, device=self.device)
     self.norm = nn.LayerNorm(patch_dim)  # For keeping vector approx. unit length
 

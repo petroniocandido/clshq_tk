@@ -14,7 +14,7 @@ class Tokenizer(lsh_tokenizer.Tokenizer):
   def __init__(self, num_variables, num_classes, sample_dim, patch_dim, window_size,
                step_size, embed_dim, sample_width = 1, patch_width = 1, 
                device = None, dtype = torch.float64, **kwargs):
-    super(lsh_tokenizer.Tokenizer, self).__init__(num_variables, num_classes, sample_dim, patch_dim, window_size,
+    super(Tokenizer, self).__init__(num_variables, num_classes, sample_dim, patch_dim, window_size,
                step_size, sample_width=sample_width, patch_width=patch_width, device=device, dtype=dtype, **kwargs)
     
     self.embed_dim = embed_dim
@@ -34,7 +34,7 @@ class Tokenizer(lsh_tokenizer.Tokenizer):
     tokens = self.norm(tokens.float())
 
     for tk in range(self.total_tokens(x)):
-      tokens[:,tk] = self.linear(tokens[:,tk])
+      tokens[:,tk] = self.linear(tokens[:,tk].clone())
 
     return tokens
 
@@ -54,6 +54,8 @@ class Tokenizer(lsh_tokenizer.Tokenizer):
 
 
 def train_step(DEVICE, metric_type, train, test, model, loss, optim):
+  
+  model.linear.train()
 
   errors = []
   for out in train:
@@ -118,7 +120,7 @@ def train_step(DEVICE, metric_type, train, test, model, loss, optim):
   # VALIDATION
   ##################
 
-  model.eval()
+  model.linear.eval()
 
   errors_val = []
   with torch.no_grad():
@@ -202,6 +204,8 @@ def training_loop(DEVICE, dataset, model, display = None, **kwargs):
     X = X.to(model.device)
     samples = model.encode(X)
     _ = model.quantize(samples)
+
+  model.eval()
 
   dataset.contrastive_type = metric_type
 

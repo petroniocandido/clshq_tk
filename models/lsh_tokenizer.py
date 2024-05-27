@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from clshq_tk.modules.lsh import LSH
+from clshq_tk.common import checkpoint, resume, DEVICE, DEFAULT_PATH
 
 class Tokenizer(nn.Module):
   def __init__(self, num_variables, num_classes, sample_dim, patch_dim, window_size,
@@ -25,7 +26,11 @@ class Tokenizer(nn.Module):
     self.norm = nn.LayerNorm(patch_dim)  # For keeping vector approx. unit length
 
   def total_tokens(self, x):
-    samples = x.size(2)
+    if len(x.size()) == 3:
+      samples = x.size(2)
+    else:
+      samples = x.size(1)
+
     inc = 0 if (samples - self.window_size) % self.step_size == 0 else 1
     return ((samples - self.window_size) // self.step_size) + inc
 
@@ -87,7 +92,8 @@ class Tokenizer(nn.Module):
       param.requires_grad = False
 
 
-def training_loop(model, dataloader):
+def training_loop(model, dataloader, **kwargs):
+  checkpoint_file = kwargs.get('checkpoint_file', 'modelo.pt')
   model.train()
   for X,_ in dataloader:
     X = X.to(model.device)
@@ -97,3 +103,4 @@ def training_loop(model, dataloader):
   model.patch_level.tensorize()
 
   model.eval()
+  checkpoint(model, checkpoint_file)

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import time
 
 import torch
 from torch import nn, optim
@@ -101,6 +102,8 @@ def training_loop(DEVICE, dataset, model, display = None, **kwargs):
   lr = kwargs.get('lr', 0.001)
   optimizer = kwargs.get('optim', optim.Adam(model.parameters(), lr=lr, weight_decay=0.0005))
 
+  start_time = time.time()
+
   for epoch in range(epochs):
 
     if epoch % 5 == 0:
@@ -163,7 +166,7 @@ def training_loop(DEVICE, dataset, model, display = None, **kwargs):
     ax[0].plot(error_train, c='blue', label='Train')
     ax[0].plot(error_val, c='red', label='Test')
     ax[0].legend(loc='upper right')
-    ax[0].set_title("Loss - Epoch {} - Train {} - Test {}".format(epoch, round(error_train[-1],2), round(error_val[-1],2)))
+    ax[0].set_title("Loss - Time {} - Epoch {} - Train {} - Test {}".format(round(time.time() - start_time, 0), epoch, round(error_train[-1],2), round(error_val[-1],2)))
     ax[1].clear()
     ax[1].plot(acc_train, c='blue', label='Train')
     ax[1].plot(acc_val, c='red', label='Test')

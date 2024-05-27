@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 import torch
 from torch import nn, optim
@@ -19,6 +20,8 @@ class Tokenizer(lsh_tokenizer.Tokenizer):
     
     self.embed_dim = embed_dim
 
+    self.drop = nn.Dropout(.25)
+
     self.linear = nn.Linear(self.patch_dim, self.embed_dim)
 
   def forward(self, x, **kwargs):
@@ -33,10 +36,14 @@ class Tokenizer(lsh_tokenizer.Tokenizer):
 
     tokens = self.norm(tokens.float())
 
-    for tk in range(self.total_tokens(x)):
-      tokens[:,tk] = self.linear(tokens[:,tk].clone())
+    batch, num_tokens, _ = tokens.size()
 
-    return tokens
+    embed_tokens = torch.zeros(batch, num_tokens, self.embed_dim, device=self.device)
+
+    for tk in range(self.total_tokens(x)):
+      embed_tokens[:,tk] = self.linear(self.drop(tokens[:,tk]))
+
+    return embed_tokens
 
   def to(self, *args, **kwargs):
     self = super().to(*args, **kwargs)
@@ -185,7 +192,7 @@ def training_loop(DEVICE, dataset, model, display = None, **kwargs):
 
   batch_size = kwargs.get('batch', 10)
 
-  fig, ax = plt.subplots(2,2, figsize=(15, 5))
+  fig, ax = plt.subplots(1,2, figsize=(15, 5))
 
   model.to(DEVICE)
 
@@ -224,6 +231,8 @@ def training_loop(DEVICE, dataset, model, display = None, **kwargs):
   error_train = []
   error_val = []
 
+  start_time = time.time()
+
   for epoch in range(epochs):
 
     if epoch % 5 == 0:
@@ -235,16 +244,16 @@ def training_loop(DEVICE, dataset, model, display = None, **kwargs):
     error_val.append(np.mean(errors_val))
 
     display.clear_output(wait=True)
-    ax[0][0].clear()
-    ax[0][0].plot(error_train, c='blue', label='Train')
-    ax[0][0].plot(error_val, c='red', label='Test')
-    ax[0][0].legend(loc='upper left')
-    ax[0][0].set_title("Encoder Loss - All Epochs {}".format(epoch))
-    ax[0][1].clear()
-    ax[0][1].plot(error_train[-20:], c='blue', label='Train')
-    ax[0][1].plot(error_val[-20:], c='red', label='Test')
-    ax[0][1].set_title("Encoder Loss - Last 20 Epochs {}".format(epoch))
-    ax[0][1].legend(loc='upper left')
+    ax[0].clear()
+    ax[0].plot(error_train, c='blue', label='Train')
+    ax[0].plot(error_val, c='red', label='Test')
+    ax[0].legend(loc='upper left')
+    ax[0].set_title("Tokenizer Loss - All Epochs {} - Time: {} s".format(epoch, round(time.time() - start_time, 0)))
+    ax[1].clear()
+    ax[1].plot(error_train[-20:], c='blue', label='Train')
+    ax[1].plot(error_val[-20:], c='red', label='Test')
+    ax[1].set_title("Tokenizer Loss - Last 20 Epochs".format(epoch))
+    ax[1].legend(loc='upper left')
     plt.tight_layout()
     display.display(plt.gcf())
   

@@ -13,10 +13,11 @@ from clshq_tk.modules.lsh import LSH
 
 class Tokenizer(lsh_tokenizer.Tokenizer):
   def __init__(self, num_variables, num_classes, sample_dim, patch_dim, window_size,
-               step_size, embed_dim, sample_width = 1, patch_width = 1, 
+               step_size, embed_dim, sample_width = 1, patch_width = 1, activation = 'trunc',
                device = None, dtype = torch.float64, **kwargs):
     super(Tokenizer, self).__init__(num_variables, num_classes, sample_dim, patch_dim, window_size,
-               step_size, sample_width=sample_width, patch_width=patch_width, device=device, dtype=dtype, **kwargs)
+               step_size, sample_width=sample_width, patch_width=patch_width, 
+               activation=activation, device=device, dtype=dtype, **kwargs)
     
     self.embed_dim = embed_dim
 

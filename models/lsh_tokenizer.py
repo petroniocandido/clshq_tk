@@ -1,12 +1,13 @@
 import torch
 from torch import nn
+from torch.utils.data import DataLoader
 
 from clshq_tk.modules.lsh import LSH
 from clshq_tk.common import checkpoint, resume, DEVICE, DEFAULT_PATH
 
 class Tokenizer(nn.Module):
   def __init__(self, num_variables, num_classes, sample_dim, patch_dim, window_size,
-               step_size, sample_width = 1, patch_width = 1, 
+               step_size, sample_width = 1, patch_width = 1, activation = 'trunc',
                device = None, dtype = torch.float64, **kwargs):
     super().__init__()
 
@@ -18,10 +19,11 @@ class Tokenizer(nn.Module):
     self.embed_dim = self.patch_dim
     self.device = device
     self.dtype = dtype
+    self.activation = activation
 
-    self.sample_level = LSH(num_variables, width=sample_width, num_dim = self.sample_dim, 
+    self.sample_level = LSH(num_variables, width=sample_width, num_dim = self.sample_dim, activation=self.activation,
                             dtype=self.dtype, device=self.device)
-    self.patch_level = LSH(window_size * sample_dim, width=patch_width, num_dim = self.patch_dim, 
+    self.patch_level = LSH(window_size * sample_dim, width=patch_width, num_dim = self.patch_dim, activation=self.activation,
                             dtype=self.dtype, device=self.device)
     self.norm = nn.LayerNorm(patch_dim)  # For keeping vector approx. unit length
 
@@ -92,7 +94,9 @@ class Tokenizer(nn.Module):
       param.requires_grad = False
 
 
-def training_loop(model, dataloader, **kwargs):
+def training_loop(model, dataset, **kwargs):
+  batch_size = kwargs.get('batch', 10)
+  dataloader = DataLoader(dataset.train(), batch_size=batch_size, shuffle=True)
   checkpoint_file = kwargs.get('checkpoint_file', 'modelo.pt')
   model.train()
   for X,_ in dataloader:

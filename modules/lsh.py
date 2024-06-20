@@ -24,15 +24,24 @@ def gram_schmidt(A):
   return A
 
 
+activations = {
+  'trunc': lambda x: torch.trunc(x),
+  'identity': lambda x: x,
+  'step': lambda x: torch.heaviside(x, torch.tensor([0]))
+}
+
+
+
 class LSH(nn.Module):
-  def __init__(self, embed_dim, width = 1000, num_dim = 1, 
-               device = None, dtype = torch.float64):
+  def __init__(self, embed_dim, width = 1000, num_dim = 1, activation = 'trunc',
+              device = None, dtype = torch.float64):
     super().__init__()
     self.dim = num_dim
     self.device = device
     self.dtype = dtype
+    self.activation = activations[activation]
 
-    self.weights = nn.Parameter(gram_schmidt(torch.rand(self.dim, embed_dim, dtype = self.dtype, device = self.device) * width), 
+    self.weights = nn.Parameter(torch.rand(self.dim, embed_dim, dtype = self.dtype, device = self.device) * width, 
                                   requires_grad = False)
 
     self.vectors = {}
@@ -53,9 +62,9 @@ class LSH(nn.Module):
     v = torch.zeros(batch, self.dim, device=self.device).int()
     for nd in range(self.dim):
       if self.dim == 1:
-        v[nd] = torch.trunc(self.weights[nd, :] @ x.T).int()
+        v[nd] = self.activation(self.weights[nd, :] @ x.T).int()
       else:
-        v[:,nd] = torch.trunc(self.weights[nd, :] @ x.T).int()
+        v[:,nd] = self.activation(self.weights[nd, :] @ x.T).int()
 
 
     if not return_index:

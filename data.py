@@ -203,3 +203,23 @@ class RandomTranslation(object):
 
   def __repr__(self):
     return self.__class__.__name__ + '(max={})'.format(self.max)
+
+
+class DropAndRepeat(object):
+  def __init__(self, prob, seq_size = 1):
+    self.prob = prob
+    self.seq_size = seq_size
+
+  def __call__(self, tensor):
+    b, v, s = tensor.size()
+    num_drops = int(s * self.prob)
+    x = tensor.clone()
+    for r in range(num_drops):
+      var = torch.randint(0,v)
+      pos = torch.randint(0,s - self.seq_size)
+      x[:,var, pos:pos + self.seq_size] = x[:, var, pos].repeat(1,self.seq_size)
+      
+    return x
+
+  def __repr__(self):
+    return self.__class__.__name__ + '(prob={},seq={})'.format(self.prob, self.seq_size)

@@ -30,6 +30,15 @@ activations = {
   'step': lambda x: torch.heaviside(x, torch.tensor([0]))
 }
 
+# Functions for vectorize the LSH hashing generation over the batches using torch.vmap
+
+def f_instance_level_map(x,y):
+  return torch.sum(x * y).int()
+
+instance_level_map = torch.func.vmap(f_instance_level_map, in_dims=0)
+
+def f_batch_level_map(x, embed_dim, weigths):
+  return instance_level_map(x.repeat(embed_dim,1,1), weigths)
 
 
 class LSH(nn.Module):
@@ -59,12 +68,18 @@ class LSH(nn.Module):
 
     x = x.to(self.dtype)
 
-    v = torch.zeros(batch, self.dim, device=self.device).int()
-    for nd in range(self.dim):
-      if self.dim == 1:
-        v[nd] = self.activation(self.weights[nd, :] @ x.T).int()
-      else:
-        v[:,nd] = self.activation(self.weights[nd, :] @ x.T).int()
+    lsh_batches = lambda input : f_batch_level_map(input, self.dim, self.weights)
+
+    batch_level_map = torch.func.vmap(lsh_batches, in_dims=0)
+
+    v = self.activation( batch_level_map(x))
+
+    #v = torch.zeros(batch, self.dim, device=self.device).int()
+    #for nd in range(self.dim):
+    #  if self.dim == 1:
+    #    v[nd] = self.activation(self.weights[nd, :] @ x.T).int()
+    #  else:
+    #    v[:,nd] = self.activation(self.weights[nd, :] @ x.T).int()
 
 
     if not return_index:

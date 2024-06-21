@@ -5,6 +5,18 @@ import torch
 from torch import nn
 
 
+def f_token_level(x,y):
+  return x @ y
+
+token_level = torch.func.vmap(f_token_level, in_dims=0)
+
+def f_sequence_level(x,t,w):
+  return token_level(x, w.repeat(t,1,1))
+
+def f_batch_level(x, w):
+  return token_level(x, w.repeat(x.size(0),1,1))
+
+
 class MultiHeadAttention(nn.Module):
   def __init__(self, num_heads, num_tokens, embed_dim, 
                device = None, dtype = torch.float64, **kwargs):
@@ -43,14 +55,26 @@ class MultiHeadAttention(nn.Module):
     Z = torch.zeros(b, self.num_heads, self.num_tokens, self.dv, device = self.device, dtype = self.dtype)
     Z2 = torch.zeros(b, self.num_tokens, self.embed_dim, device = self.device, dtype = self.dtype)
     for h in range(self.num_heads):
-      Q = torch.zeros(b, self.num_tokens, self.dk, device = self.device, dtype = self.dtype)
-      K = torch.zeros(b, self.num_tokens, self.dk, device = self.device, dtype = self.dtype)
-      V = torch.zeros(b, self.num_tokens, self.dv, device = self.device, dtype = self.dtype)
-      for i in range(self.num_tokens):
-        xtemp = x[:,i,:].view(b,e)
-        Q[:,i,:] = xtemp @ self.WQ[h]
-        K[:,i,:] = xtemp @ self.WK[h]
-        V[:,i,:] = xtemp @ self.WV[h]
+      Q_seq_fun = lambda x : f_sequence_level(x, self.num_tokens, self.WQ[h])
+      Q_sequence_level = torch.func.vmap(Q_seq_fun, in_dims=0)
+      Q = Q_sequence_level(x)
+
+      K_seq_fun = lambda x : f_sequence_level(x, self.num_tokens, self.WK[h])
+      K_sequence_level = torch.func.vmap(K_seq_fun, in_dims=0)
+      K = K_sequence_level(x)
+
+      V_seq_fun = lambda x : f_sequence_level(x, self.num_tokens, self.WV[h])
+      V_sequence_level = torch.func.vmap(V_seq_fun, in_dims=0)
+      V = V_sequence_level(x)
+
+    #  Q = torch.zeros(b, self.num_tokens, self.dk, device = self.device, dtype = self.dtype)
+    #  K = torch.zeros(b, self.num_tokens, self.dk, device = self.device, dtype = self.dtype)
+    #  V = torch.zeros(b, self.num_tokens, self.dv, device = self.device, dtype = self.dtype)
+    #  for i in range(self.num_tokens):
+    #    xtemp = x[:,i,:].view(b,e)
+    #    Q[:,i,:] = xtemp @ self.WQ[h]
+    #    K[:,i,:] = xtemp @ self.WK[h]
+    #    V[:,i,:] = xtemp @ self.WV[h]
 
       scores = Q @ K.view(b,e,t)
 
@@ -58,10 +82,15 @@ class MultiHeadAttention(nn.Module):
 
       Z[:, h, :, :] = A @ V
 
-    Z2 = torch.zeros(b, self.num_tokens, self.embed_dim, device = self.device, dtype = self.dtype)
-    for bb in range(b):
-      z = Z[bb,:,:,:].reshape(self.num_tokens, self.num_heads * self.dv)
-      Z2[bb, :, :] = z @ self.WO
+    Z_batch_fun = lambda input : f_batch_level(input, self.WO)
+    Z_batch_level = torch.func.vmap(Z_batch_fun, in_dims=0)
+    Zt = Z.reshape(b, self.num_tokens, self.num_heads * self.dv)
+    Z2 = Z_batch_level(Zt)
+    
+    #Z2 = torch.zeros(b, self.num_tokens, self.embed_dim, device = self.device, dtype = self.dtype)
+    #for bb in range(b):
+    #  z = Z[bb,:,:,:].reshape(self.num_tokens, self.num_heads * self.dv)
+    #  Z2[bb, :, :] = z @ self.WO
 
     return Z2
 

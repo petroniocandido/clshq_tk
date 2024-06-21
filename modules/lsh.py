@@ -57,6 +57,10 @@ class LSH(nn.Module):
     self.statistics = {}
     self.tensors = torch.tensor(0)
 
+    lsh_batches = lambda input : f_batch_level_map(input, self.dim, self.weights)
+
+    self.batch_level_map = torch.func.vmap(lsh_batches, in_dims=0)
+
   def tensorize(self):
     tmp = np.array(sorted([k for k in self.vectors.keys()]))
     self.tensors = torch.from_numpy(tmp).int().to(self.device)
@@ -68,11 +72,7 @@ class LSH(nn.Module):
 
     x = x.to(self.dtype)
 
-    lsh_batches = lambda input : f_batch_level_map(input, self.dim, self.weights)
-
-    batch_level_map = torch.func.vmap(lsh_batches, in_dims=0)
-
-    v = self.activation( batch_level_map(x))
+    v = self.activation( self.batch_level_map(x))
 
     #v = torch.zeros(batch, self.dim, device=self.device).int()
     #for nd in range(self.dim):

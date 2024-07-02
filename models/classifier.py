@@ -17,6 +17,7 @@ from clshq_tk.modules.transformer import Transformer
 
 class TSAttentionClassifier(nn.Module):
   def __init__(self, tokenizer, num_tokens, num_layers, num_heads, feed_forward, 
+               num_classes = 2,
                device = None, dtype = torch.float64, **kwargs):
     super().__init__()
 
@@ -32,7 +33,7 @@ class TSAttentionClassifier(nn.Module):
                          dtype=self.dtype, device=self.device) 
                          for k in range(num_layers)]
     self.flat = nn.Flatten(1)
-    self.linear = nn.Linear(self.num_tokens * self.tokenizer.embed_dim, self.tokenizer.num_classes, 
+    self.linear = nn.Linear(self.num_tokens * self.tokenizer.embed_dim, num_classes, 
                             dtype=self.dtype, device=self.device)
     self.relu = nn.ReLU()
     self.drop = nn.Dropout(.25)

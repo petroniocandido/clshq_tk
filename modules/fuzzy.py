@@ -57,12 +57,12 @@ class GridPartitioner(nn.Module):
 
     self.num_vars = torch.tensor(vars)
 
-    self.fuzzy_sets = torch.zeros(vars, self.partitions, self.nparam, device=self.device)
+    self.fuzzy_sets = torch.zeros(vars, self.partitions, self.nparam, device=self.device, requires_grad=False)
 
     self.names = []
 
-    self.lower_bounds = torch.zeros(self.num_vars, device=self.device)
-    self.upper_bounds = torch.zeros(self.num_vars, device=self.device)
+    self.lower_bounds = torch.zeros(self.num_vars, device=self.device, requires_grad=False)
+    self.upper_bounds = torch.zeros(self.num_vars, device=self.device, requires_grad=False)
 
 
   def forward(self, data, **kwargs):
@@ -77,14 +77,16 @@ class GridPartitioner(nn.Module):
 
       _max = torch.max(data[:,v,:])
       if _max > self.upper_bounds[v]:
-        self.upper_bounds[v] = _max
+        self.upper_bounds[v] = _max * 1.2 if _max > 0 else _max * 0.8
+        _max = self.upper_bounds[v]
         changed = True
       else:
         _max = self.upper_bounds[v]
 
       _min = torch.min(data[:,v,:])
       if _min < self.lower_bounds[v]:
-        self.lower_bounds[v] = _min
+        self.lower_bounds[v] = _min * 0.8 if _min > 0 else _min * 1.2
+        _min = self.lower_bounds[v]
         changed = True
       else:
         _min = self.lower_bounds[v]

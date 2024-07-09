@@ -52,6 +52,8 @@ class ClassificationTS(Dataset):
 
     self._load_indexes()
 
+    self.is_validation = False
+
   def _load_indexes(self):
     for label in self.labels:
       self.class_indexes[label.item()] = (self.y == label).nonzero().squeeze().numpy()
@@ -59,6 +61,7 @@ class ClassificationTS(Dataset):
 
   def train(self) -> Dataset:
     tmp = copy.deepcopy(self)
+    tmp.is_validation = False
     tmp.num_instances = self.train_split
     tmp.X = self.X[0:self.train_split]
     tmp.y = self.y[0:self.train_split]
@@ -67,6 +70,7 @@ class ClassificationTS(Dataset):
 
   def test(self) -> Dataset:
     tmp = copy.deepcopy(self)
+    tmp.is_validation = True
     tmp.num_instances = self.num_instances - self.train_split
     tmp.X = self.X[self.train_split:]
     tmp.y = self.y[self.train_split:]
@@ -103,7 +107,7 @@ class ClassificationTS(Dataset):
   def __getitem__(self, index):
 
     if self.contrastive_type is None:
-      if not self.transform:
+      if not self.transform or self.is_validation:
         return self.X[index], self.y[index]
       else:
         return self.transform(self.X[index]), self.y[index]
@@ -114,7 +118,7 @@ class ClassificationTS(Dataset):
       else:
         sample = [self.any_sample(ix) for ix in index]
 
-      if not self.transform:
+      if not self.transform or self.is_validation:
         return self.X[index], self.y[index], \
           self.X[sample], self.y[sample]
       else:
@@ -129,7 +133,7 @@ class ClassificationTS(Dataset):
         positive = [self.positive_sample(ix) for ix in index]
         negative = [self.negative_sample(ix) for ix in index]
 
-      if not self.transform:
+      if not self.transform or self.is_validation:
         return self.X[index], self.y[index], \
           self.X[positive], self.y[positive], \
           self.X[negative], self.y[negative],
@@ -146,7 +150,7 @@ class ClassificationTS(Dataset):
         positive = [self.positive_sample(ix) for ix in index]
         negative = [self.all_negative_samples(ix) for ix in index]
 
-      if not self.transform:
+      if not self.transform or self.is_validation:
         return self.X[index], self.y[index], \
           self.X[positive], self.y[positive], \
           self.X[negative], self.y[negative]

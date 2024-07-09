@@ -31,8 +31,8 @@ class Tokenizer(nn.Module):
     self.embed_dim = embed_dim
     self.vocab = {}
     self.vocab_size = 1
-    self.embedding = nn.Embedding(self.partitioner.num_vars * self.partitioner.partitions * window_size,
-                                  embed_dim, device=device, dtype=dtype)
+    #self.embedding = nn.Embedding(self.partitioner.num_vars * self.partitioner.partitions * window_size,
+    #                              embed_dim, device=device, dtype=dtype)
     self.device = device
     self.dtype = dtype
 
@@ -58,7 +58,8 @@ class Tokenizer(nn.Module):
 
     num_tokens = self.total_tokens(x)
 
-    tokens = torch.zeros(batch, num_tokens, self.embed_dim, dtype=self.dtype, device = self.device)
+    #tokens = torch.zeros(batch, num_tokens, self.embed_dim, dtype=self.dtype, device = self.device)
+    tokens = torch.zeros(batch, num_tokens, dtype=torch.long, device = self.device)
 
     for ix, window in enumerate(self.sliding_window(x)):
       data = x[:,:, window : window + self.window_size]
@@ -79,18 +80,19 @@ class Tokenizer(nn.Module):
             num_token = self.vocab_size
             self.vocab_size = self.vocab_size + 1
 
-          if self.vocab_size >= self.embedding.weight.size(0):
-            self.embedding = nn.Embedding(int(self.vocab_size * 1.2),
-                                  self.embed_dim, dtype=self.dtype, device = self.device)
+          #if self.vocab_size >= self.embedding.weight.size(0):
+          #  self.embedding = nn.Embedding(int(self.vocab_size * 1.2),
+          #                        self.embed_dim, dtype=self.dtype, device = self.device)
         else:
           num_token = self.vocab[token] if token in self.vocab else 0
 
-        tokens[b,ix,:] = self.embedding(torch.tensor(num_token, device=self.device))
+        #tokens[b,ix,:] = self.embedding(torch.tensor(num_token, device=self.device))]
+        tokens[b,ix] = num_token
 
     return tokens  
   
   def freeze(self):
-    pass
+    self.training = False
 
 
   def to(self, *args, **kwargs):
@@ -100,7 +102,7 @@ class Tokenizer(nn.Module):
     else:
       self.dtype = args[0]
     self.fuzzyfier = self.fuzzyfier.to(*args, **kwargs)
-    self.embedding = self.embedding.to(*args, **kwargs)
+    #self.embedding = self.embedding.to(*args, **kwargs)
     return self
 
   def train(self, *args, **kwargs):

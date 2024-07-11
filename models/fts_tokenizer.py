@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from clshq_tk.modules.fuzzy import GridPartitioner, Fuzzyfier
+from clshq_tk.modules.fuzzy import GridPartitioner
 from clshq_tk.common import checkpoint, resume, DEVICE, DEFAULT_PATH
 
 big_prime_number = torch.tensor([17461204521323])
@@ -100,7 +100,7 @@ class Tokenizer(nn.Module):
       self.device = args[0]
     else:
       self.dtype = args[0]
-    self.fuzzyfier = self.fuzzyfier.to(*args, **kwargs)
+    self.partitioner = self.partitioner.to(*args, **kwargs)
     #self.embedding = self.embedding.to(*args, **kwargs)
     return self
 

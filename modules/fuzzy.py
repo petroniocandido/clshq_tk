@@ -40,6 +40,11 @@ def var_names(var, max_vars):
   return ret
 
 
+def mf(func, x, p, alpha_cut=0.1):
+  mv = func(x,p)
+  return torch.where(mv >= alpha_cut, mv, 0)
+
+
 class GridPartitioner(nn.Module):
   def __init__(self, mf, npart, vars, device = None, dtype = torch.float64, **kwargs):
     super().__init__()
@@ -65,7 +70,7 @@ class GridPartitioner(nn.Module):
     self.upper_bounds = torch.zeros(self.num_vars, device=self.device, requires_grad=False)
 
 
-  def forward(self, data, **kwargs):
+  def fit(self, data, **kwargs):
     batch, vars, samples = data.size()
 
     if vars != self.num_vars:
@@ -106,49 +111,20 @@ class GridPartitioner(nn.Module):
         changed = False
 
     return self.fuzzy_sets
-  
-  def to(self, *args, **kwargs):
-    self = super().to(*args, **kwargs)
-    if isinstance(args[0], str):
-      self.device = args[0]
-    else:
-      self.dtype = args[0]
-    self.fuzzy_sets = self.fuzzy_sets.to(*args, **kwargs)
-    self.alpha_cut = self.alpha_cut.to(*args, **kwargs)
-    self.num_vars = self.num_vars.to(*args, **kwargs)
-    self.nparam = self.nparam.to(*args, **kwargs)
-    return self
-
-
-def mf(func, x, p, alpha_cut=0.1):
-  mv = func(x,p)
-  return torch.where(mv >= alpha_cut, mv, 0)
-
-
-class Fuzzyfier(nn.Module):
-  def __init__(self, partitioner, device = None, dtype = torch.float64, **kwargs):
-    super().__init__()
-    self.partitioner = partitioner
-    self.device = device
-    self.dtype = dtype
 
   def forward(self, x, **kwargs):
     batch, vars, samples = x.size()
-
-    #if vars != self.partitioner.num_vars:
-    #  raise Exception("Wrong number of variables")
 
     # Modes: full, top-k, indexes
     fuzzy_mode = kwargs.get('mode','full')
     fuzzy_param = int(kwargs.get('k',2))
 
     if fuzzy_mode == 'full':
-      fuzzy = torch.zeros(batch, vars, samples, self.partitioner.partitions, device=self.device)
+      fuzzy = torch.zeros(batch, vars, samples, self.partitions, device=self.device)
     else:
       fuzzy = torch.zeros(batch, vars, samples, fuzzy_param, device=self.device)
      
-
-    vmap_mf = lambda input,weights: mf(self.partitioner.membership_function, input, weights, self.partitioner.alpha_cut)
+    vmap_mf = lambda input,weights: mf(self.membership_function, input, weights, self.alpha_cut)
 
     mf_level = torch.func.vmap(vmap_mf, in_dims=0)
 
@@ -156,7 +132,7 @@ class Fuzzyfier(nn.Module):
 
     for var in range(vars):
 
-      f_sl = lambda inputs: f_sample_level(inputs, self.partitioner.partitions, self.partitioner.fuzzy_sets[var,:,:])
+      f_sl = lambda inputs: f_sample_level(inputs, self.partitions, self.fuzzy_sets[var,:,:])
 
       sample_level = torch.func.vmap(f_sl, in_dims=0)
 
@@ -179,8 +155,18 @@ class Fuzzyfier(nn.Module):
       self.device = args[0]
     else:
       self.dtype = args[0]
-    self.partitioner = self.partitioner.to(*args, **kwargs)
+    self.fuzzy_sets = self.fuzzy_sets.to(*args, **kwargs)
+    self.alpha_cut = self.alpha_cut.to(*args, **kwargs)
+    self.num_vars = self.num_vars.to(*args, **kwargs)
+    self.nparam = self.nparam.to(*args, **kwargs)
     return self
+  
+  def freeze(self):
+    self.training = False
+    self.fuzzy_sets.requires_grad = False
+    self.alpha_cut.requires_grad = False
+    self.num_vars.requires_grad = False
+    self.nparam.requires_grad = False
   
 
 def training_loop(model, dataset, **kwargs):
@@ -189,7 +175,7 @@ def training_loop(model, dataset, **kwargs):
   model.train()
   for X,_ in dataloader:
     X = X.to(model.device)
-    _ = model.forward(X)
+    _ = model.fit(X)
   
   model.eval()
   

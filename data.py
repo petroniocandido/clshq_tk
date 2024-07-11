@@ -107,7 +107,7 @@ class ClassificationTS(Dataset):
   def __getitem__(self, index):
 
     if self.contrastive_type is None:
-      if not self.transform or self.is_validation:
+      if not self.transform:# or self.is_validation:
         return self.X[index], self.y[index]
       else:
         return self.transform(self.X[index]), self.y[index]
@@ -118,7 +118,7 @@ class ClassificationTS(Dataset):
       else:
         sample = [self.any_sample(ix) for ix in index]
 
-      if not self.transform or self.is_validation:
+      if not self.transform:# or self.is_validation:
         return self.X[index], self.y[index], \
           self.X[sample], self.y[sample]
       else:
@@ -133,7 +133,7 @@ class ClassificationTS(Dataset):
         positive = [self.positive_sample(ix) for ix in index]
         negative = [self.negative_sample(ix) for ix in index]
 
-      if not self.transform or self.is_validation:
+      if not self.transform:# or self.is_validation:
         return self.X[index], self.y[index], \
           self.X[positive], self.y[positive], \
           self.X[negative], self.y[negative],
@@ -150,7 +150,7 @@ class ClassificationTS(Dataset):
         positive = [self.positive_sample(ix) for ix in index]
         negative = [self.all_negative_samples(ix) for ix in index]
 
-      if not self.transform or self.is_validation:
+      if not self.transform:# or self.is_validation:
         return self.X[index], self.y[index], \
           self.X[positive], self.y[positive], \
           self.X[negative], self.y[negative]
@@ -180,7 +180,6 @@ class Noise(object):
       self.min = kwargs.get('min', 0)
       self.max = kwargs.get('max', 1)
       self.range = self.max - self.min
-      print(self.range)
     elif self.type == 'normal':
       self.std = kwargs.get('std', 0.2)
       self.mean = kwargs.get('mean', 0)

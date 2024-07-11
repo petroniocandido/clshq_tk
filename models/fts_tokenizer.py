@@ -25,7 +25,6 @@ class Tokenizer(nn.Module):
     super().__init__()
 
     self.partitioner = partitioner
-    self.fuzzyfier = Fuzzyfier(self.partitioner, device = device, dtype=dtype, **kwargs)
     self.window_size = window_size
     self.step_size = step_size
     self.embed_dim = embed_dim
@@ -63,7 +62,7 @@ class Tokenizer(nn.Module):
 
     for ix, window in enumerate(self.sliding_window(x)):
       data = x[:,:, window : window + self.window_size]
-      fuzz = self.fuzzyfier(data, mode = 'indexes', k = 2)
+      fuzz = self.partitioner(data, mode = 'indexes', k = 2)
       _hash = hash_tensor(fuzz, device=self.device).detach().cpu().numpy()
 
       for b in range(batch):

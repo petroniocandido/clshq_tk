@@ -125,7 +125,7 @@ def training_loop(DEVICE, dataset, model, display = None, **kwargs):
 
       error = loss(y_pred, y)
 
-      error.backward(retain_graph=True )
+      error.backward() #retain_graph=True )
       optimizer.step()
 
       errors.append(error.cpu().item())
